@@ -18,6 +18,14 @@ import Pagination from '../components/Pagination';
 import { ITEMS_PER_PAGE, MOOD_OPTIONS } from '../utils/constants';
 import { normalizeStats } from '../utils/formatters';
 
+const getApiErrorMessage = (apiError, fallback) => {
+  if (apiError?.code === 'ERR_NETWORK') {
+    return 'Cannot connect to backend at http://localhost:8080/api/habits. Start your Spring Boot server and refresh.';
+  }
+
+  return apiError?.response?.data?.message || fallback;
+};
+
 function HabitDashboard() {
   const [habits, setHabits] = useState([]);
   const [stats, setStats] = useState({ totalHabits: 0, moodDistribution: {} });
@@ -49,7 +57,7 @@ function HabitDashboard() {
       setHabits(response.data || []);
       return response.data || [];
     } catch (apiError) {
-      setError(apiError?.response?.data?.message || 'Failed to load habits.');
+      setError(getApiErrorMessage(apiError, 'Failed to load habits.'));
       return [];
     } finally {
       setIsLoading(false);
@@ -60,7 +68,8 @@ function HabitDashboard() {
     try {
       const response = await getStats();
       setStats(normalizeStats(response.data, habitList));
-    } catch {
+    } catch (apiError) {
+      setError((prev) => prev || getApiErrorMessage(apiError, 'Failed to load analytics.'));
       setStats(normalizeStats(null, habitList));
     }
   }, []);
@@ -114,7 +123,7 @@ function HabitDashboard() {
       setIsModalOpen(false);
       setEditingHabit(null);
     } catch (apiError) {
-      setError(apiError?.response?.data?.message || 'Failed to save habit.');
+      setError(getApiErrorMessage(apiError, 'Failed to save habit.'));
       showToast('Unable to save habit.', 'error');
     } finally {
       setIsSaving(false);
@@ -133,7 +142,7 @@ function HabitDashboard() {
       const list = await loadHabits(selectedMood);
       await loadStats(list);
     } catch (apiError) {
-      setError(apiError?.response?.data?.message || 'Failed to delete habit.');
+      setError(getApiErrorMessage(apiError, 'Failed to delete habit.'));
       showToast('Delete failed.', 'error');
     }
   };
